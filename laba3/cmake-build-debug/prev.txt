@@ -1,0 +1,193 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+struct info{
+    char* filmName;
+    char* filmType;
+    int year;
+};
+
+void deleteEnter(char* string, int length){
+    int index = 0;
+    while(string[index] != '\n' && index < length) index++;
+    string[index] = '\0';
+}
+
+void inputInFile(FILE *f, struct info film, char *argv[]){
+    if(!(f = fopen(argv[1], "ab+"))){
+        printf("Unable to open file\n");
+        exit(1);
+    }
+    fwrite(&film, sizeof(film), 1, f);
+    fclose(f);
+}
+
+void inputInfo(struct info *film){
+    film->filmName = (char*) calloc(100, sizeof(char));
+    film->filmType = (char*) calloc(100, sizeof(char));
+    fflush(stdin);
+    printf("Enter name of a film\n");
+    fgets(film->filmName, 100, stdin);
+    fflush(stdin);
+    printf("Enter type of a film\n");
+    fgets(film->filmType, 100, stdin);
+    fflush(stdin);
+    film->year = -1;
+    printf("Enter year of release date\n");
+    while(film->year < 0){
+        fflush(stdin);
+        while(!fscanf(stdin, "%d", &film->year)){
+            printf("You entered not a year\n");
+            fflush(stdin);
+        }
+        if(film->year < 0){
+            printf("You entered number less than 0\n");
+        }
+    }
+    deleteEnter(film->filmName, 100);
+    deleteEnter(film->filmType, 100);
+}
+
+fpos_t outputFromFile(FILE *f, struct info *film, char *argv[], fpos_t curPos, char* userAnswer, char* criteria){
+    if(!(f = fopen(argv[1], "rb+"))){
+        printf("Unable to open file\n");
+        exit(1);
+    }
+    fsetpos(f, &curPos);
+    fread(film, sizeof(struct info), 1, f);
+    if(!(strcmp(film->filmName, "UNDEFINED") == 0)) {
+        if (strcmp(userAnswer, "all") == 0) {
+            printf("\tFILM\nNAME: %s\nTYPE: %s\nYEAR: %d\n\n",
+                   film->filmName, film->filmType, film->year);
+        } else if (strcmp(userAnswer, "name") == 0) {
+            if (strcmp(criteria, film->filmName) == 0) {
+                printf("\tFILM\nNAME: %s\nTYPE: %s\nYEAR: %d\n\n",
+                       film->filmName, film->filmType, film->year);
+            }
+        } else if (strcmp(userAnswer, "type") == 0) {
+            if (strcmp(criteria, film->filmType) == 0) {
+                printf("\tFILM\nNAME: %s\nTYPE: %s\nYEAR: %d\n\n",
+                       film->filmName, film->filmType, film->year);
+            }
+        } else if (strcmp(userAnswer, "year") == 0) {
+            if (film->year == atoi(criteria)) {
+                printf("\tFILM\nNAME: %s\nTYPE: %s\nYEAR: %d\n\n",
+                       film->filmName, film->filmType, film->year);
+            }
+        }
+    }
+    fgetpos(f, &curPos);
+    fclose(f);
+    return curPos;
+}
+////
+int deleteFromFile(FILE *f, struct info *film, char *argv[], int amount, char* userAnswer){
+    if(!(f = fopen(argv[1], "rb+"))){
+        printf("Unable to open file\n");
+        exit(1);
+    }
+    struct info *list = (struct info*) calloc(1000, sizeof(struct info));
+    for (int i = 0; i < amount; ++i) {
+        fread(&list[i], sizeof(struct info), 1, f);
+    }
+    fclose(f);
+    if(!(f = fopen(argv[1], "wb+"))){
+        printf("Unable to open file\n");
+        exit(1);
+    }
+    fseek(f, 0, SEEK_SET);
+    int diff = 0;
+    for (int i = 0; i < amount; ++i) {
+        if (strcmp(userAnswer, list[i].filmName) == 0){
+            diff++;
+            continue;
+        } else {
+            fwrite(&list[i], sizeof(struct info), 1, f);
+        }
+    }
+    if (diff == 0){
+        printf("No films found\n");
+    } else if (diff == 1){
+        printf("Deleted 1 film\n");
+    } else if (diff > 1){
+        printf("Deleted %d films\n", diff);
+    }
+    fclose(f);
+    return diff;
+}
+////
+void loop(FILE *f, struct info film, char* argv[]){
+    char *userAnswer = (char*) calloc (100, sizeof(char));
+    int filmsAmount = 0;
+    fpos_t curPos;
+    while (1){
+        curPos = 0;
+        printf("'add' - creates new film\n"
+               "'delete' - removes a film\n"
+               "'show' - shows films via criteria\n"
+               "'exit' - ends program\n");
+        fflush(stdin);
+        fgets(userAnswer, 100, stdin);
+        deleteEnter(userAnswer, 100);
+        if (strcmp(userAnswer, "exit") == 0){
+            printf("\nClosing...\n");
+            break;
+        } else if (strcmp(userAnswer, "add") == 0){
+            printf("Add a new film\n");
+            inputInfo(&film);
+            inputInFile(f, film, argv);
+            filmsAmount++;
+        } else if (strcmp(userAnswer, "delete") == 0){
+            printf("Deleting file\n"
+                   "Enter name of a film\n");
+            fflush(stdin);
+            fgets(userAnswer, 100, stdin);
+            deleteEnter(userAnswer, 100);
+            int diff = deleteFromFile(f, &film, argv, filmsAmount, userAnswer);
+            filmsAmount -= diff;
+            curPos = 0;
+        } else if (strcmp(userAnswer, "show") == 0){
+            printf("Select criteria\n"
+                   "'all' - shows all films\n"
+                   "'name' - show films by name\n"
+                   "'type' - show films by type\n"
+                   "'year' - show films by release year\n");
+            fflush(stdin);
+            fgets(userAnswer, 100, stdin);
+            deleteEnter(userAnswer, 100);
+            char *criteria = (char *) calloc(100, sizeof(char));
+            if (!(strcmp(userAnswer, "all") == 0)) {
+                fflush(stdin);
+                printf("Enter criteria\n");
+                fgets(criteria, 100, stdin);
+                deleteEnter(criteria, 100);
+            }
+            if (strcmp(userAnswer, "all") == 0 ||
+            strcmp(userAnswer, "name") == 0 ||
+            strcmp(userAnswer, "type") == 0 ||
+            strcmp(userAnswer, "year") == 0){
+                for (int i = 0; i < filmsAmount; ++i) {
+                    curPos = outputFromFile(f, &film, argv, curPos, userAnswer, criteria);
+                }
+            }
+        } else {
+            printf("Something went wrong... Try again\n");
+        }
+    }
+}
+
+int main(__attribute__((unused)) int argc, char *argv[]){
+    FILE *f = NULL;
+    if(argv[1] == NULL){
+        printf("You entered nothing in command line\n");
+        return 1;
+    }
+    if(!(f = fopen(argv[1], "wb+"))){
+        printf("Unable to open file\n");
+        exit(1);
+    }
+    fclose(f);
+    struct info film = {};
+    loop(f, film, argv);
+}
