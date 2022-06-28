@@ -1,0 +1,3 @@
+D:/DanWork/source/CLion Projects/Laba1a/cmake-build-debug/CMakeFiles/Laba1a.dir
+D:/DanWork/source/CLion Projects/Laba1a/cmake-build-debug/CMakeFiles/edit_cache.dir
+D:/DanWork/source/CLion Projects/Laba1a/cmake-build-debug/CMakeFiles/rebuild_cache.dir
